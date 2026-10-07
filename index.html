@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Explore the BANTAY portable solar irrigation prototype in 3D. Scroll to separate the components and learn what each part does.">
+  <title>BANTAY — Explore the prototype</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2311342b'/%3E%3Cpath d='M9 8h8c9 0 9 8 3 9 7 2 5 9-2 9H9z' fill='%23dcad64'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="assets/model-data.js"></script><script defer src="app.js"></script>
+</head>
+<body>
+<main id="viewport" tabindex="0" aria-label="BANTAY 3D viewer" aria-describedby="viewer-help">
+  <canvas id="model-canvas" aria-label="BANTAY 3D model"></canvas>
+  <svg id="leader-lines" aria-hidden="true"></svg>
+  <div id="labels" aria-label="Component labels"></div>
+  <div id="loading" role="status"><img src="assets/preview.jpg" alt="BANTAY assembled prototype"><p id="loading-message">Opening the 3D model…</p></div>
+</main>
+<div class="part-picker">
+  <label class="label-toggle"><input type="checkbox" id="show-labels" disabled> Show labels</label>
+  <select id="part-select" aria-label="Choose a component" title="Choose a part to inspect. Whole device returns to the full view." disabled>
+    <option value="overview">Whole device</option>
+  </select>
+</div>
+<p id="viewer-help" class="sr-only">Scroll down to separate the parts, and up to rebuild. Drag to rotate. Hold Ctrl while scrolling, pinch, or use the plus and minus keys to zoom. Choose a component in the bottom-right menu to look closer. Escape returns to the whole device.</p>
+<noscript><p class="no-script">Enable JavaScript to explore the 3D model.</p></noscript>
+</body></html>
