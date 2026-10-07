@@ -2,6 +2,7 @@ BANTAY — local 3D website
 
 Double-click index.html to open the website in Chrome or Edge.
 No installation, internet connection or server is required. Keep the assets folder beside index.html.
+The online viewer downloads a compressed model; opening index.html locally uses an offline copy.
 
 The model fills the window. Choose a part in the small bottom-right menu to inspect it.
 Use the Show labels checkbox above the menu to show or hide clickable numbered labels.

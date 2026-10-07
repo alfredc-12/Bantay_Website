@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 const $ = id => document.getElementById(id);
 const viewport = $('viewport'), canvas = $('model-canvas'), picker = $('part-select');
@@ -10,6 +11,7 @@ const labels = window.BANTAY_LABELS.labels;
 const clamp = THREE.MathUtils.clamp;
 const state = { ready:false, progress:0, target:0, selected:null, showLabels:false, zoomScale:1, error:null };
 const groups = new Map(), chips = new Map();
+const loadStarted=performance.now();
 let renderer, scene, camera, controls, model, mixer, action, duration, focusTween;
 function setProgress(p) {
  state.target=clamp(p,0,1);
@@ -103,6 +105,32 @@ function fail(error) {
  state.error=String(error?.message||error);console.error(error);
  $('loading').hidden=false;$('loading').classList.add('error');$('loading-message').textContent='The interactive view could not start. Try opening this page in an updated Chrome or Edge browser.';
 }
+async function loadModelBytes() {
+ const manifest=window.BANTAY_MODEL;
+ if(location.protocol==='file:') {
+  $('loading-message').textContent='Opening the local 3D model…';
+  await new Promise((resolve,reject)=>{
+   const script=document.createElement('script');script.src='assets/offline-model.js';
+   script.onload=resolve;script.onerror=()=>reject(new Error('Local model file could not be opened.'));document.head.append(script);
+  });
+  const decoded=atob(window.BANTAY_MODEL_BASE64),bytes=new Uint8Array(decoded.length);
+  for(let i=0;i<decoded.length;i++)bytes[i]=decoded.charCodeAt(i);
+  delete window.BANTAY_MODEL_BASE64;return bytes.buffer;
+ }
+ const compressed=typeof DecompressionStream==='function';
+ const response=await fetch(compressed?manifest.url:manifest.fallbackUrl);
+ if(!response.ok)throw new Error(`Model download failed (${response.status}).`);
+ const expected=compressed?manifest.compressedBytes:manifest.bytes;
+ const reader=response.body.getReader(),chunks=[];let received=0;
+ while(true){
+  const {done,value}=await reader.read();if(done)break;
+  chunks.push(value);received+=value.length;
+  $('loading-message').textContent=`Downloading 3D model… ${Math.min(100,Math.round(received/expected*100))}%`;
+ }
+ const blob=new Blob(chunks);state.downloadBytes=received;
+ state.downloadMs=performance.now()-loadStarted;
+ return compressed?await new Response(blob.stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer():await blob.arrayBuffer();
+}
 async function start() {
  try {
   renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;
@@ -112,12 +140,12 @@ async function start() {
   controls=new OrbitControls(camera,canvas);controls.enableDamping=true;controls.dampingFactor=.09;controls.minDistance=.09;controls.maxDistance=7;controls.enablePan=true;
   controls.addEventListener('start',()=>{focusTween=null;});
   controls.addEventListener('end',()=>{if(state.ready&&!state.selected)state.zoomScale=camera.position.distanceTo(controls.target)/framing().distance;});
-  const decoded=atob(window.BANTAY_MODEL_BASE64);const bytes=new Uint8Array(decoded.length);for(let i=0;i<decoded.length;i++)bytes[i]=decoded.charCodeAt(i);delete window.BANTAY_MODEL_BASE64;
-  const gltf=await new GLTFLoader().parseAsync(bytes.buffer,'');model=gltf.scene;scene.add(model);
+  const bytes=await loadModelBytes();$('loading-message').textContent='Preparing the interactive model…';
+  const gltf=await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(bytes,'');model=gltf.scene;scene.add(model);
   model.traverse(o=>{if(o.userData.part_name)groups.set(o.userData.part_name,o);});
   if(groups.size!==15||gltf.animations.length!==1)throw new Error('The assembly model is incomplete.');
   mixer=new THREE.AnimationMixer(model);action=mixer.clipAction(gltf.animations[0]);action.setLoop(THREE.LoopOnce,1);action.clampWhenFinished=true;action.play();duration=gltf.animations[0].duration;
-  state.ready=true;resize();mixer.setTime(0);model.updateMatrixWorld(true);fitView();$('loading').hidden=true;
+  state.ready=true;state.loadMs=performance.now()-loadStarted;resize();mixer.setTime(0);model.updateMatrixWorld(true);fitView();$('loading').hidden=true;
   picker.disabled=false;labelToggle.disabled=false;
   new ResizeObserver(resize).observe(viewport);
   const raycaster=new THREE.Raycaster();let pointerStart;
